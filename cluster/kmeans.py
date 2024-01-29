@@ -20,6 +20,22 @@ class KMeans:
             max_iter: int
                 the maximum number of iterations before quitting model fit
         """
+        # Error checking
+        if not isinstance(k, int):
+            raise TypeError("k must be an integer.")
+        if not isinstance(tol, float):
+            raise TypeError("tol must be a float.")
+        if not isinstance(max_iter, int):
+            raise TypeError("max_iter must be an integer.")
+        if k < 1:
+            raise ValueError("k must be a positive integer.")
+        if tol <= 0:
+            raise ValueError("tol must be a positive non-zero float.")
+        if max_iter < 1:
+            raise ValueError("max_iter must be a positive non-zero integer.")
+        self.k = k
+        self.tol = tol
+        self.max_iter = max_iter
 
     def fit(self, mat: np.ndarray):
         """
@@ -36,6 +52,61 @@ class KMeans:
             mat: np.ndarray
                 A 2D matrix where the rows are observations and columns are features
         """
+        # Error checking
+        if not isinstance(mat, np.ndarray):
+            raise TypeError("mat must be a numpy array.")
+
+        # TODO: Implement kmeans++?
+        self.centroids = {i: mat[np.random.randint(0, len(mat))] for i in range(self.k)}
+
+        for _ in range(self.max_iter):
+            # Compute all squared distances between data points and centroids
+            distances = cdist(mat, list(self.centroids.values()), "sqeuclidean")
+            # Assign each data point to the nearest centroid
+            closest_centroids = np.argmin(distances, axis=1)
+
+            # Recompute clusters
+            self.clusters = {i: [] for i in range(self.k)}
+            for i, centroid in enumerate(closest_centroids):
+                self.clusters[centroid].append(mat[i])
+
+            # Keep a copy of the old centroids for checking tolerance
+            old_centroids = dict(self.centroids)
+
+            # Recalculate centroids
+            for cluster in self.clusters:
+                self.centroids[cluster] = np.average(self.clusters[cluster], axis=0)
+
+            # Check tolerance
+            stable = True
+            for centroid in self.centroids:
+                original_centroid = old_centroids[centroid]
+                current_centroid = self.centroids[centroid]
+                # Checking tolerance this way may quit early for movements
+                # that are significant but smaller than the value of tol. Make
+                # sure tol is set appropriate to the scale of the data.
+                if current_centroid - original_centroid > self.tol:
+                    stable = False
+
+            # Break out of the loop if the centroids have stabilized
+            if stable:
+                break
+
+        # Get centroids for each data point
+        centroids_array = np.array(
+            [
+                self.centroids[cluster]
+                for cluster in np.argmin(
+                    cdist(mat, list(self.centroids.values())), axis=1
+                )
+            ]
+        )
+
+        # Compute squared distances between data points and centroids
+        squared_distances = np.sum((cdist(mat, centroids_array, "sqeuclidean")), axis=1)
+
+        # Store mean squared error
+        self.error = np.mean(squared_distances)
 
     def predict(self, mat: np.ndarray) -> np.ndarray:
         """
@@ -53,6 +124,38 @@ class KMeans:
             np.ndarray
                 a 1D array with the cluster label for each of the observations in `mat`
         """
+        # Error checking
+        if not hasattr(self, "centroids") or not hasattr(self, "clusters"):
+            raise ValueError(
+                "Model must be fit before predictions can be made. Call the fit() method on the appropriate data first."
+            )
+
+        if not isinstance(mat, np.ndarray):
+            raise TypeError("mat must be a numpy array.")
+
+        if mat.ndim != 2:
+            raise ValueError(
+                "mat must be a 2D matrix where the rows are observations and columns are features."
+            )
+
+        if mat.shape[1] != next(iter(self.centroids.values())).shape[0]:
+            raise ValueError(
+                "Feature dimension of input does not match the dimension of the fitted data."
+            )
+
+        try:
+            # Compute distances from each point in mat to each centroid
+            distances = cdist(mat, list(self.centroids.values()), "sqeuclidean")
+        except ValueError:
+            raise ValueError(
+                "Distances could not be computed. The feature type that was fitted may not have a \
+                              defined distance operation to the given data."
+            )
+
+        # Assign each data point to the nearest centroid
+        closest_centroids = np.argmin(distances, axis=1)
+
+        return closest_centroids
 
     def get_error(self) -> float:
         """
@@ -63,6 +166,12 @@ class KMeans:
             float
                 the squared-mean error of the fit model
         """
+        if not hasattr(self, "error"):
+            raise ValueError(
+                "Model must be fit before predictions can be made. Call the fit() method on the appropriate data first."
+            )
+
+        return self.error
 
     def get_centroids(self) -> np.ndarray:
         """
@@ -72,3 +181,10 @@ class KMeans:
             np.ndarray
                 a `k x m` 2D matrix representing the cluster centroids of the fit model
         """
+        if not hasattr(self, "centroids"):
+            raise ValueError(
+                "Model must be fit before predictions can be made. Call the fit() method on the appropriate data first."
+            )
+
+        centroids_array = np.array(list(self.centroids.values()))
+        return centroids_array
