@@ -11,7 +11,7 @@ pythonpath = [
 ]
 
 [project]
-name = "clustering"
+name = "cluster"
 authors = [{name = "Karson Chrispens", email = "karson.chrispens@ucsf.edu"}]
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -20,7 +20,7 @@ dynamic = ["version", "description"]
 dependencies = [
     "pytest",
     "numpy",
-    "sklearn",
+    "scikit-learn",
     "scipy",
     "matplotlib"
 ]
