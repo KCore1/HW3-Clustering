@@ -1,3 +1,5 @@
+https://github.com/KCore1/HW3-Clustering/workflows/Project%20Tests/badge.svg
+
 # Assignment 3
 Implementation of KMeans and Silhouette Scoring
 
