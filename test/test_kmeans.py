@@ -2,8 +2,8 @@
 import numpy as np
 import pytest
 import timeit
-from cluster import KMeans, make_clusters, plot_clusters, plot_multipanel
-from sklearn.metrics import silhouette_score
+from cluster import KMeans, make_clusters, plot_clusters, plot_multipanel, Silhouette
+from sklearn.metrics.cluster import contingency_matrix
 
 
 def test_kmeans_invalid_inputs():
@@ -109,17 +109,23 @@ def test_kmeans_default():
     # Test the labels
     assert len(kmeans.predict(mat)) == len(labels)
     assert len(kmeans.predict(predict_mat)) == len(predict_labels)
-    assert np.mean(kmeans.predict(predict_mat) == predict_labels) > 0.25
+    # Hacky way to test label correctness for the 4 clusters
+    matching_clusters = [max(row) for row in contingency_matrix(labels, kmeans.predict(mat))]
+    assert matching_clusters[0] / np.sum(labels == 0) > 0.7
+    assert matching_clusters[1] / np.sum(labels == 1) > 0.7
+    assert matching_clusters[2] / np.sum(labels == 2) > 0.7
+    assert matching_clusters[3] / np.sum(labels == 3) > 0.7
 
     # Test that tolerance and max_iter are faster when larger and lower, respectively
-    kmeans = KMeans(k=4, tol=0.001, max_iter=100)
+    # NOTE: This test is not deterministic and may fail if the machine load is dynamic
+    kmeans = KMeans(k=4, tol=1e-9, max_iter=100)
     kmeans.fit(mat)
-    fast_kmeans = KMeans(k=4, tol=0.0001, max_iter=100)
+    fast_kmeans = KMeans(k=4, tol=1e-2, max_iter=100)
     fast_kmeans.fit(mat)
     assert timeit.timeit(lambda: kmeans.fit(mat), number=1) > timeit.timeit(
         lambda: fast_kmeans.fit(mat), number=1
     )
-    slow_kmeans = KMeans(k=4, tol=0.0001, max_iter=1000)
+    slow_kmeans = KMeans(k=4, tol=1e-2, max_iter=1000)
     slow_kmeans.fit(mat)
     assert timeit.timeit(lambda: slow_kmeans.fit(mat), number=1) > timeit.timeit(
         lambda: fast_kmeans.fit(mat), number=1
@@ -129,11 +135,23 @@ def test_kmeans_default():
 if __name__ == "__main__":
     # Plotting the clusters
     mat, labels = make_clusters()
+    scorer = Silhouette()
 
     plot_clusters(mat, labels)
 
     # Plotting the clusters with different k values
     kmeans = KMeans(k=2)
     kmeans.fit(mat)
-    plot_clusters(mat, kmeans.predict(mat))
+    pred = kmeans.predict(mat)
+    plot_multipanel(mat, labels, pred, scorer.score(mat, pred))
+
+    kmeans = KMeans(k=3)
+    kmeans.fit(mat)
+    pred = kmeans.predict(mat)
+    plot_multipanel(mat, labels, pred, scorer.score(mat, pred))
+
+    kmeans = KMeans(k=4)
+    kmeans.fit(mat)
+    pred = kmeans.predict(mat)
+    plot_multipanel(mat, labels, pred, scorer.score(mat, pred))
     

@@ -50,13 +50,13 @@ class Silhouette:
 
             # a is the distance to all other observations in the same cluster
             a = np.mean(
-                cdist(X[i], X[y == label])
+                cdist(X[i].reshape(1, -1), X[y == label])
             )
 
             # b is the distance to all observations in the nearest cluster
             b = np.min(
                 [
-                    np.mean(cdist(X[i], X[y == other_label]))
+                    np.mean(cdist(X[i].reshape(1, -1), X[y == other_label]))
                     for other_label in unique_labels
                     if other_label != label
                 ]
