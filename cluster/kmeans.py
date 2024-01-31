@@ -75,7 +75,7 @@ class KMeans:
 
             # Recalculate centroids
             for cluster in self.clusters:
-                self.centroids[cluster] = np.average(self.clusters[cluster], axis=0)
+                self.centroids[cluster] = np.mean(self.clusters[cluster], axis=0)
 
             # Check tolerance
             stable = True
@@ -85,7 +85,7 @@ class KMeans:
                 # Checking tolerance this way may quit early for movements
                 # that are significant but smaller than the value of tol. Make
                 # sure tol is set appropriate to the scale of the data.
-                if current_centroid - original_centroid > self.tol:
+                if np.linalg.norm(current_centroid - original_centroid) > self.tol:
                     stable = False
 
             # Break out of the loop if the centroids have stabilized
